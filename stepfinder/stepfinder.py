@@ -18,7 +18,6 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import pyximport; pyximport.install()
 import warnings
 from collections import namedtuple
