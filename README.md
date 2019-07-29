@@ -1,2 +1,2 @@
 # stepfinder 
-A Python program to detext steps in data. 
+A Python program to detect steps in data. 
