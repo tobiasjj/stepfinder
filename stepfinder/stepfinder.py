@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# stepfinder, find steps in data
+# stepfinder, find steps in data with SNR below 1.0
 # Copyright 2016,2017,2018,2019 Tobias Jachowski
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -602,7 +602,7 @@ def _filter_fbnl_capped(data, resolution, window, window_var=None, p=None):
 def _filter_fbnl(data, resolution, window, window_var=None, p=None):
     N = len(data)
     window_var = window_var or window
-    p = p or 1
+    p = p if p is not None else 1
 
     # init results to nan
     # Filtered data

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# stepfinder, find steps in data
+# stepfinder, find steps in data with SNR below 1.0
 # Copyright 2016,2017,2018,2019 Tobias Jachowski
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
