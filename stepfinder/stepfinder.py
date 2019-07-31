@@ -160,35 +160,66 @@ def get_contiguous_segments(plateaus, min_distance_center=1, min_length_high=1,
     def check_center_distance(idx_start, idx_stop):
         if min_distance_center == 1:
             return idx_start, idx_stop
+
+        # Create a linked list from the two arrays describing the start and
+        # stop inidices of the plateaus. This implementation avoids the (for
+        # long lists) expensive pop() function of lists.
+        class Plateau(object):
+            def __init__(self, start, stop, next=None):
+                self.next = next
+                self._start = start
+                self._stop = stop
+                self.center = start + (stop - start) / 2
+            @property
+            def start(self):
+                return self._start
+            @start.setter
+            def start(self, start):
+                self._start = start
+                self.center = self.start + (self.stop - self.start) / 2
+            @property
+            def stop(self):
+                return self._stop
+            @stop.setter
+            def stop(self, stop):
+                self._stop = stop
+                self.center = self.start + (self.stop - self.start) / 2
+        current = Plateau(idx_start[-1], idx_stop[-1])
+        for start, stop in zip(idx_start[-2::-1], idx_stop[-2::-1]):
+            current = Plateau(start, stop, current)
+        first = current
+
         # Iteratively check distance of the center of one plateau (start, stop)
         # to the following one, and either fuse them or delete the next one, if
         # the distance is too small
-        center = (idx_start + (idx_stop - idx_start) / 2).tolist()
-        start = idx_start.tolist()
-        stop = idx_stop.tolist()
-        i = 0
-        num_plateaus = len(center)
-        while i < num_plateaus - 1:
-            if center[i + 1] - center[i] < min_distance_center:
+        num_plateaus = len(idx_start)
+        while current.next is not None:
+            if current.next.center - current.center < min_distance_center:
                 if fuse:
                     # Correct the stop of the leading plateau to be the one
-                    # of the following
-                    stop[i] = stop[i + 1]
-                    # Correct the center position of the now bigger leading
-                    # plateau
-                    center[i] = start[i] + (stop[i] - start[i]) / 2
+                    # of the following and implicitly correct the center
+                    # position of the now bigger leading plateau
+                    current.stop = current.next.stop
                 # Delete the following plateau and its corresponding center
-                start.pop(i + 1)
-                stop.pop(i + 1)
-                center.pop(i + 1)
-
-                # Correct number for deleted plateau and go back one step to
-                # check also the distance of the current plateau to the plateau
-                # after the next one (now the next one)
+                current.next = current.next.next
+                # Correct number for deleted plateau
                 num_plateaus -= 1
-                i -= 1
+            else:
+                # select the next plateau
+                current = current.next
+
+        # Create numpy arrays from linked list
+        start = np.empty(num_plateaus)
+        stop = np.empty(num_plateaus)
+        current = first
+        i = 0
+        while current is not None:
+            start[i] = current.start
+            stop[i] = current.stop
+            current = current.next
             i += 1
-        return np.array(start), np.array(stop)
+
+        return start, stop
 
     def check_length_high(idx_start, idx_stop):
         if min_length_high == 1:
@@ -902,10 +933,10 @@ def get_min_step_sizes(indices, y_c, fbnl_filter, step_size_threshold=None):
         stop_max = len(noise) - start_min
 
         # adapt to mean noise at step
-        noise_mean = np.zeros(number)
+        noise_mean = np.empty(number)
         for i, step in enumerate(indices):
             start = max(step - (window + window_var), start_min)
-            stop = min(step + (window + window_var) * window, stop_max)
+            stop = min(step + (window + window_var), stop_max)
             noise_mean[i] = noise[start:stop].mean()
 
         min_step_sizes = y_c * noise_mean
@@ -942,96 +973,96 @@ def delete_small_steps(steps, min_step_sizes):
     -------
     Steps : namedtuple
     """
-    # old steps
-    step_bounds = steps.bounds.tolist()
-    indices = steps.indices.tolist()
-    direction = steps.direction.tolist()
-    plateaus = steps.plateaus.tolist()
-    p_centers = steps.p_centers.tolist()
-    num_steps = steps.number
-    step_sizes = steps.step_sizes.tolist()
-    p_heights = steps.plateau_heights.tolist()
-    dwell_points = steps.dwell_points.tolist()
+    # Create a linked list from the plateaus and their corresponding steps.
+    # This implementation avoids the (for long lists) expensive pop() function
+    # of lists.
+    class Plateau(object):
+        def __init__(self, start, stop, height,
+                     step_bounds=None, step_minsize=None,
+                     prev=None, next=None):
+            self.prev = prev
+            self.next = next
+            if prev is not None:
+                prev.next = self
+            if next is not None:
+                next.prev = self
+            self.start = start
+            self.stop = stop
+            self.height = height
+            self.step_bounds = step_bounds
+            self.step_minsize = step_minsize
+    first = Plateau(steps.plateaus[0][0], steps.plateaus[0][1],
+                    steps.plateau_heights[0],
+                    steps.bounds[0], min_step_sizes[0])
+    current = first
+    for v in zip(steps.plateaus[1:], steps.plateau_heights[1:],
+                 steps.bounds[1:], min_step_sizes[1:]):
+        current = Plateau(v[0][0], v[0][1], v[1], v[2], v[3], prev=current)
+    current = Plateau(steps.plateaus[-1][0], steps.plateaus[-1][1],
+                      steps.plateau_heights[-1], prev=current)
 
-    minsizes = min_step_sizes.tolist()
-
-    # Delete steps (and fuse corresponding plateaus), which are below minimum
-    # step_size and (re)check previous and following step(s) for mininum
+    # Iteratively check minimum step size and fuse/delete plateaus and steps
+    # and (re)check previous and following step(s) for mininum
     # step_size, which could have been changed due to the deletion.
+    current = first
+    num_plateaus = steps.number + 1
+    while current.next is not None:
+        if np.abs(current.next.height - current.height) < current.step_minsize:
+            # Calculate new plateau height
+            lc = current.stop - current.start
+            ln = current.next.stop - current.next.start
+            height_new = (current.height * lc + current.next.height * ln) \
+                         / (lc + ln)
+
+            # Correct plateaus start index and height
+            current.next.start = current.start
+            current.next.height = height_new
+
+            # Remove current plateau and its step and replace
+            # references to current with the previous and next plateau
+            num_plateaus -= 1
+            current.next.prev = current.prev
+            if current.prev is not None:
+                # Current plateau is not the first
+                # Replace reference from previous to current with next one
+                # Step size of previous plateau was changed. Recheck the
+                # step size -> set current plateau to be the previous one
+                current.prev.next = current.next
+                current = current.prev
+            else:
+                # Current plateau is the first
+                # Set the next to be the first one and check the
+                # next plateau
+                first = current.next
+                current = current.next
+        else:
+            # Nothing deleted, check next plateau
+            current = current.next
+
+    # Create numpy arrays
+    plateaus = np.empty((num_plateaus, 2), dtype=int)
+    p_heights = np.empty(num_plateaus)
+    step_bounds = np.empty((num_plateaus - 1, 2), dtype=int)
+
+    current = first
     i = 0
-    while i < num_steps:
-        if np.abs(step_sizes[i]) < minsizes[i]:
-            # Calculate new plateau center position
-            # p_center_new = start[i] + (stop[i + 1] - start[i]) / 2
-            p_start_new = plateaus[i][0]
-            p_stop_new = plateaus[i + 1][1]
-            p_center_new = int(np.round(
-                p_start_new + (p_stop_new - p_start_new) / 2))
-            # Calculate new plateauheight
-            # p_height_new = (left_plateau + right_plateau) / n
-            p_height_l = p_heights[i]
-            p_height_r = p_heights[i + 1]
-            l = plateaus[i][1] - plateaus[i][0]  # length_l
-            r = plateaus[i + 1][1] - plateaus[i + 1][0]  # length_r
-            p_height_new = (p_height_l * l + p_height_r * r) / (l + r)
-            # Correct following start index, center, and plateauheight
-            plateaus[i + 1][0] = p_start_new
-            p_centers[i + 1] = p_center_new
-            p_heights[i + 1] = p_height_new
-            # Delete current plateau
-            plateaus.pop(i)
-            p_centers.pop(i)
-            p_heights.pop(i)
-
-            # New step_sizes are the differences of the plateauheights
-            # Correct previous and following stepheigth
-            if i >= 1:
-                # p_height_new, formerly corresponding to p_heights[i + 1], now
-                # corresponds to p_heights[i], due to the deletion of
-                # p_heights[i]!
-                step_sizes[i - 1] = p_height_new - p_heights[i - 1]
-            if i < num_steps - 1:
-                # Former p_heights[i + 2] is now p_heights[i + 1], due to
-                # deletion of p_heights[i]!
-                step_sizes[i + 1] = p_heights[i + 1] - p_height_new
-            # Delete current step_size
-            step_sizes.pop(i)
-
-            # New dwell_points
-            if i >= 1 and i < num_steps - 1:
-                # Correct previous dwell_points
-                dwell_points[i - 1] += dwell_points[i]
-            if i < num_steps - 1:
-                # Delete current dwell_points
-                dwell_points.pop(i)
-            elif num_steps >= 2:
-                # Deleted the very last step -> remove dwell_points of
-                # previous step (remove very last dwell_points)
-                dwell_points.pop()
-
-            # Delete ith step
-            indices.pop(i)
-            direction.pop(i)
-            step_bounds.pop(i)
-            minsizes.pop(i)
-
-            num_steps -= 1
-            # former [i+1]th step is now ith step -> set counter back
-            # step_sizes[i - 1] was changed, recheck step_sizes[i - 1] -> set
-            # counter back twice and make sure, i will not be < 0
-            i -= 2
-            i = max(i, -1)
+    while current is not None:
+        plateaus[i][0] = current.start
+        plateaus[i][1] = current.stop
+        p_heights[i] = current.height
+        if current.next is not None:
+            step_bounds[i] = current.step_bounds
+        current = current.next
         i += 1
 
-    indices = np.array(indices)
-    direction = np.array(direction)
-    step_bounds = np.array(step_bounds)
-    number = len(indices)
-    plateaus = np.array(plateaus)
-    p_centers = np.array(p_centers)
-    step_sizes = np.array(step_sizes)
-    p_heights = np.array(p_heights)
-    dwell_points = np.array(dwell_points)
+    indices = plateaus.flatten()[1:-1:2]
+    step_sizes = p_heights[1:] - p_heights[:-1]
+    direction = step_sizes > 0
+    number = num_plateaus - 1
+    p_centers = np.round(
+            plateaus[:,0] + (plateaus[:,1] - plateaus[:,0]) / 2
+        ).astype(int)
+    dwell_points = indices[1:] - indices[:-1]
 
     return Steps(indices, direction, step_bounds, number, plateaus,
                  p_centers, step_sizes, p_heights, dwell_points)
