@@ -1,2 +1,5 @@
-# stepfinder 
-A Python program to detect steps in data with SNR below 1.0.
+# Stepfinder 
+A Python program to detect steps in data with low SNR.
+
+# Cite as follows:
+Jachowski, T.J. (2019). Stepfinder: detect steps with low SNR. GitHub repository: https://github.com/tobiasjj/stepfinder
