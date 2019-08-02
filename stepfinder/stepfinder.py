@@ -722,8 +722,8 @@ def find_steps(step_mass, y_c, max_step_width=None, min_step_spacing=None,
          /      \       /    \
         /        \     /      \
     switch_accept : bool, optional
-        Accept each other following steps, if their direction is opposite from
-        each other, even if the distance `E` would not be sufficient.
+        Accept each other following steps, even if the distance `E` would not
+        be sufficient, if their direction is opposite from each other.
 
     Returns
     -------

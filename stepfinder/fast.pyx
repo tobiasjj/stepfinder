@@ -68,14 +68,18 @@ def _delete_close_center(step_bounds not None,
                          fuse=True,
                          copy=True):
     """
-    Iteratively check distance of the center of one plateau (start, stop) to
-    the following one, and either fuse them or delete the next one, if the
-    distance is too small.
-    Split steps based whose step_bounds > max_step_width.
-    This will probably lead to too many FPs, but these will be automatically
+    Iteratively check the distance of the center of one step_bounds segment
+    (start, stop) to the center of the following one. If the distance is too
+    small, either fuse the step_bounds segments or delete the following one.
+    If a step_bounds segment is, or due to fusion got longer than
+    `max_step_width`, accept the step regardless of the distance to the
+    following step.
+    If a step's following step has the opposite direction and `switch_accept`
+    is True, accept the step regardless of the distance to the following step.
+    This will probably lead to too many false positive steps, but these will be
     deleted later in the function `delete_small_steps()`. A Correct threshold
-    would be 2 * min_step_spacing (see Smith1998), but this would lead to too
-    many undetected steps (due to noise)
+    would be 2 * min_step_spacing (see Smith1998), but due to noise this would
+    lead to too many undetected steps.
     """
     if copy:
         _start = step_bounds[:, 0].copy()
