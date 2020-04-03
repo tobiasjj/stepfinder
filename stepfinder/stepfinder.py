@@ -1273,7 +1273,7 @@ def find_and_analyse_steps(fbnl_filter, expected_min_step_size=None,
         min_step_sizes_pre, step_size_threshold \
             = get_min_step_sizes(indices, y_c, fbnl_filter,
                                  step_size_threshold)
-        step_quality_pre = get_step_qualities(steps_pre, fbnl_filter)
+        step_distribution_pre = get_step_qualities(steps_pre, fbnl_filter)
 
         # Delete small steps and calculate new qualities
         steps = delete_small_steps(steps_pre, min_step_sizes_pre)
@@ -1284,7 +1284,7 @@ def find_and_analyse_steps(fbnl_filter, expected_min_step_size=None,
         min_step_sizes, step_size_threshold \
             = get_min_step_sizes(steps.indices, y_c, fbnl_filter,
                                  step_size_threshold)
-        step_quality = get_step_qualities(steps, fbnl_filter)
+        step_distribution = get_step_qualities(steps, fbnl_filter)
 
         # Inform if step sizes of all steps are smaller than minimum allowed
         # step spacings
@@ -1313,8 +1313,8 @@ def find_and_analyse_steps(fbnl_filter, expected_min_step_size=None,
                                   expected_min_dwell_t, min_dwell_time,
                                   switch_accept, step_size_threshold,
                                   steps_pre, steps, min_step_sizes_pre,
-                                  min_step_sizes, step_quality_pre,
-                                  step_quality)
+                                  min_step_sizes, step_distribution_pre,
+                                  step_distribution)
     else:
         # no steps, create one big plateau
         plateaus = np.array([0, len(fbnl_filter.data)], dtype=int)
@@ -1323,12 +1323,12 @@ def find_and_analyse_steps(fbnl_filter, expected_min_step_size=None,
                       np.empty(shape=(0, 2)), 0, plateaus, p_centers,
                       np.empty(0), plateau_heights, np.empty(0))
         min_step_sizes = np.array([])
-        step_quality = StepQuality(np.empty(0), np.empty(0), np.empty(0))
+        step_distribution = StepQuality(np.empty(0), np.empty(0), np.empty(0))
         result = StepFinderResult(fbnl_filter, expected_min_step_size, y_c,
                                   expected_min_dwell_t, min_dwell_time,
                                   switch_accept, step_size_threshold,
                                   steps, steps, min_step_sizes, min_step_sizes,
-                                  step_quality, step_quality)
+                                  step_distribution, step_distribution)
     return result
 
 
@@ -1594,53 +1594,6 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
     # Set the window for the variance weight to the window size
     window_var = window
 
-    if plot:
-        steps_number_pre = np.array(steps_number_pre)
-        steps_number = np.array(steps_number)
-        # aSNRs = np.array(aSNRs)
-        # mSNRs = np.array(aSNRs)
-        window_time = window / resolution * 1000  # ms
-
-        fig = plt.figure()
-        plt.suptitle('Result of the filter window time optimization process')
-
-        ax = plt.subplot(221)
-        plt.plot(windows / resolution * 1000, steps_number_pre, 'c.',
-                 label='pre')
-        plt.plot(windows / resolution * 1000, steps_number, 'm.',
-                 label='deleted')
-        y = ax.get_ylim()
-        plt.vlines([window_time], y[0], y[1], alpha=0.5)
-        plt.ylim(y)
-        plt.legend(loc='best')
-        plt.xlabel('Filter window time (ms)')
-        plt.ylabel('Step count')
-        ax = plt.subplot(222)
-        with np.errstate(divide='ignore', invalid='ignore'):
-            plt.plot(windows / resolution * 1000,
-                     steps_number / steps_number_pre, '.')
-        y = ax.get_ylim()
-        plt.vlines([window_time], y[0], y[1], alpha=0.5)
-        plt.ylim(y)
-        plt.xlabel('Filter window time (ms)')
-        plt.ylabel('Ratio of valid steps')
-        ax = plt.subplot(223)
-        plt.plot(windows / resolution * 1000, STDs, '.', label='STD')
-        y = ax.get_ylim()
-        plt.vlines([window_time], y[0], y[1], alpha=0.5)
-        plt.ylim(y)
-        plt.xlabel('Filter window time (ms)')
-        plt.ylabel('STD of step_mass w/o outls')
-        ax = plt.subplot(224)
-        plt.plot(windows / resolution * 1000, aSNRs, '.', label='average SNR')
-        plt.plot(windows / resolution * 1000, mSNRs, '.', label='median SNR')
-        y = ax.get_ylim()
-        plt.vlines([window_time], y[0], y[1], alpha=0.5)
-        plt.ylim(y)
-        plt.legend(loc='best')
-        plt.xlabel('Filter window time (ms)')
-        plt.ylabel('SNR of outls over STD of step_mass')
-
     if filter_time is None and verbose:
         print('Autoselection of `filter_time` was enabled.'
               '\n  Please, verify your results and, if necessary, adjust this '
@@ -1665,13 +1618,75 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
                                  step_size_threshold=step_size_threshold,
                                  verbose=verbose)
     if plot:
+        stepfinder_characteristics = {
+            'windows': windows,
+            'steps_number_pre': np.array(steps_number_pre),
+            'steps_number': np.array(steps_number),
+            'aSNRs': np.array(aSNRs),
+            'mSNRs': np.array(mSNRs),
+            'STDs': STDs,
+            'resolution': resolution,
+            'window_time': window / resolution
+        }
+        fig, axes = plot_stepfinder_characteristics(stepfinder_characteristics)
         return step_finder_result, fig
     return step_finder_result
 
 
+def plot_stepfinder_characteristics(stepfinder_characteristics, axes=None):
+    if axes is None:
+        fig, axes = plt.subplots(2, 2)
+        axes = axes.flatten()
+    else:
+        fig = axes[0].get_figure()
+
+    windows = stepfinder_characteristics['windows']
+    steps_number_pre = stepfinder_characteristics['steps_number_pre']
+    steps_number = stepfinder_characteristics['steps_number']
+    aSNRs = stepfinder_characteristics['aSNRs']
+    mSNRs = stepfinder_characteristics['mSNRs']
+    STDs = stepfinder_characteristics['STDs']
+    resolution = stepfinder_characteristics['resolution']
+    window_time = stepfinder_characteristics['window_time']
+
+    fig.suptitle('Result of the filter window time optimization process')
+
+    ax = axes[0]
+    ax.plot(windows / resolution * 1000, steps_number_pre, 'c.', label='pre')
+    ax.plot(windows / resolution * 1000, steps_number, 'm.', label='deleted')
+    ax.axvline(x=window_time * 1000, alpha=0.5)
+    ax.legend(loc='best')
+    ax.set_xlabel('Filter window time (ms)')
+    ax.set_ylabel('Step count')
+
+    ax = axes[1]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ax.plot(windows / resolution * 1000, steps_number / steps_number_pre,
+                '.')
+    ax.axvline(x=window_time * 1000, alpha=0.5)
+    ax.set_xlabel('Filter window time (ms)')
+    ax.set_ylabel('Ratio of valid steps')
+
+    ax = axes[2]
+    ax.plot(windows / resolution * 1000, STDs, '.', label='STD')
+    ax.axvline(x=window_time * 1000, alpha=0.5)
+    ax.set_xlabel('Filter window time (ms)')
+    ax.set_ylabel('STD of step_mass w/o outls')
+
+    ax = axes[3]
+    ax.plot(windows / resolution * 1000, aSNRs, '.', label='average SNR')
+    ax.plot(windows / resolution * 1000, mSNRs, '.', label='median SNR')
+    ax.axvline(x=window_time * 1000, alpha=0.5)
+    ax.legend(loc='best')
+    ax.set_xlabel('Filter window time (ms)')
+    ax.set_ylabel('SNR of outls over STD of step_mass')
+
+    return fig, axes
+
+
 def plot_result(step_finder_result, simulated_steps=None, decimate=None,
                 xlim=None, ylims=None, unfiltered=True, step_size_bins=None,
-                dwell_time_bins=None):
+                dwell_time_bins=None, axes_steps=None, axes_distribution=None):
     """
     Plot the result of a step_finder.
 
@@ -1700,8 +1715,8 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
 
     Returns
     -------
-    fig1 : matplotlib.pyplot.figure
-    fig2 : matplotlib.pyplot.figure
+    fig_steps : matplotlib.pyplot.figure
+    fig_distribution : matplotlib.pyplot.figure
     """
     fbnl_filter = step_finder_result.fbnl_filter
     resolution = fbnl_filter.resolution
@@ -1716,7 +1731,7 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     steps_pre = step_finder_result.steps_pre
     steps = step_finder_result.steps
 
-    step_quality = step_finder_result.quality
+    step_distribution = step_finder_result.quality
 
     datapoints = len(fbnl_filter.data)
     tmin = 0
@@ -1730,8 +1745,13 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     step_size_bins = step_size_bins or 'auto'
     dwell_time_bins = dwell_time_bins or 'auto'
 
+    if axes_steps is None:
+        fig_steps, axes_steps = plt.subplots(4, sharex=True)
+        axes_steps = axes_steps.flatten()
+    else:
+        fig_steps = axes_steps[0].get_figure()
+
     # Result of the step finder algorithm
-    fig1 = plt.figure()
     tmp = ('filter_time = {:.1f} ms, p = {:.1f}, y_c = {:.3f},'
            '\nmin_dwell_time = {:.1f} ms, step_size_threshold = {},'
            '\nsteps.number: {}')
@@ -1739,85 +1759,96 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     pars = (filter_time * 1000, p, y_c, min_dwell_time * 1000,
             step_size_threshold, steps.number)
     title = tmp.format(*pars)
-    plt.suptitle(title)
+    fig_steps.suptitle(title)
 
     # Plot data, filtered data and steps
-    plt.subplot(411)
+    ax = axes_steps[0]
     if unfiltered:
-        plt.plot(time[::decimate], fbnl_filter.data[::decimate], alpha=0.5,
-                 color='grey')
-    plt.plot(time[::decimate], fbnl_filter.data_filtered[::decimate],
-             alpha=0.5, color='black')
+        ax.plot(time[::decimate], fbnl_filter.data[::decimate], alpha=0.5,
+                color='grey')
+    ax.plot(time[::decimate], fbnl_filter.data_filtered[::decimate],
+            alpha=0.5, color='black')
     if simulated_steps is not None:
-        plt.plot(time[::decimate], simulated_steps.data[::decimate], alpha=0.8,
-                 color='yellow')
-    plt.step(time[steps.plateaus[:, 0]], steps.plateau_heights, 'm',
-             where='post', lw=0.5)
-    plt.plot(time[steps_pre.indices],
-             fbnl_filter.data_filtered[steps_pre.indices], 'c.')
-    plt.plot(time[steps.indices], fbnl_filter.data_filtered[steps.indices],
-             'm.')
-    plt.xlim(xlim)
-    plt.ylim(ylims[0])
-    plt.ylabel('Position (nm)')
+        ax.plot(time[::decimate], simulated_steps.data[::decimate], alpha=0.8,
+                color='yellow')
+    ax.step(time[steps.plateaus[:, 0]], steps.plateau_heights, 'm',
+            where='post', lw=0.5)
+    ax.plot(time[steps_pre.indices],
+            fbnl_filter.data_filtered[steps_pre.indices], 'c.')
+    ax.plot(time[steps.indices], fbnl_filter.data_filtered[steps.indices],
+            'm.')
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylims[0])
+    ax.set_ylabel('Position (m)')
+
     # Plot step_mass with y_c and steps
-    plt.subplot(412)
-    plt.plot(time[::decimate], step_mass[::decimate], alpha=0.5, color='grey')
-    plt.hlines([y_c, -y_c], 0, datapoints / resolution, alpha=0.5)
-    plt.plot(time[steps_pre.indices], step_mass[steps_pre.indices], 'c.')
+    ax = axes_steps[1]
+    ax.plot(time[::decimate], step_mass[::decimate], alpha=0.5, color='grey')
+    ax.axhline(y_c, alpha=0.5)
+    ax.axhline(-y_c, alpha=0.5)
+    ax.plot(time[steps_pre.indices], step_mass[steps_pre.indices], 'c.')
     if steps is not None:
-        plt.plot(time[steps.indices], step_mass[steps.indices], 'mo')
-    plt.xlim(xlim)
-    plt.ylim(ylims[1])
-    plt.ylabel('Amplitude\n(stepsize/noise)')
+        ax.plot(time[steps.indices], step_mass[steps.indices], 'mo')
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylims[1])
+    ax.set_ylabel('Amplitude\n(stepsize/noise)')
+
     # Step sizes and threshold
-    plt.subplot(413)
-    plt.stem(time[steps_pre.indices], steps_pre.step_sizes, 'c', 'c.', 'k-')
-    plt.stem(time[steps.indices], steps.step_sizes, 'm', 'mo', 'k-')
-    plt.step(time[steps_pre.indices], step_finder_result.min_sizes_pre, 'c',
-             where='mid')
-    plt.step(time[steps_pre.indices], - step_finder_result.min_sizes_pre, 'c',
-             where='mid')
-    plt.step(time[steps.indices], step_finder_result.min_sizes, 'm',
-             where='mid')
-    plt.step(time[steps.indices], - step_finder_result.min_sizes, 'm',
-             where='mid')
-    plt.xlim(xlim)
-    plt.ylim(ylims[2])
-    plt.ylabel('Step size')
+    ax = axes_steps[2]
+    ax.stem(time[steps_pre.indices], steps_pre.step_sizes, 'c', 'c.', 'k-')
+    ax.stem(time[steps.indices], steps.step_sizes, 'm', 'mo', 'k-')
+    ax.step(time[steps_pre.indices], step_finder_result.min_sizes_pre, 'c',
+            where='mid')
+    ax.step(time[steps_pre.indices], - step_finder_result.min_sizes_pre, 'c',
+            where='mid')
+    ax.step(time[steps.indices], step_finder_result.min_sizes, 'm',
+            where='mid')
+    ax.step(time[steps.indices], - step_finder_result.min_sizes, 'm',
+            where='mid')
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylims[2])
+    ax.set_ylabel('Step size')
+
     # Plot noise and sd
-    plt.subplot(414)
+    ax = axes_steps[3]
     # take center of plateaus as start/stop values for plotting function of
     # ratio of sd to noise (there is one more plateau as steps)
     p_center = (steps.plateaus[:, 0]
                 + (steps.plateaus[:, 1] - steps.plateaus[:, 0]) / 2)
     p_center = np.round(p_center).astype(int)
     p_center[p_center > datapoints - 1] = datapoints - 1
-    plt.step(time[p_center][:-1], step_quality.step_noise_over_sd, 'm',
-             where='post')
-    plt.plot(time[steps.indices], step_quality.step_noise_over_sd, 'mo')
-    plt.xlim(xlim)
-    plt.ylim(ylims[3])
-    plt.ylabel('Quality of steps\nnoise (w/o steps) /\ns.d. around each step')
-    plt.xlabel('Time (s)')
+    ax.step(time[p_center][:-1], step_distribution.step_noise_over_sd, 'm',
+            where='post')
+    ax.plot(time[steps.indices], step_distribution.step_noise_over_sd, 'mo')
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylims[3])
+    ax.set_ylabel('Quality of steps\nnoise (w/o steps) /\ns.d. around each step')
+    ax.set_xlabel('Time (s)')
 
-    fig2 = plt.figure()
-    plt.suptitle('Distribution of step sizes and dwell times')
+    if axes_distribution is None:
+        fig_distribution, axes_distribution = plt.subplots(2)
+        axes_distribution = axes_distribution.flatten()
+    else:
+        fig_distribution = axes_distribution[0].get_figure()
+    fig_distribution.suptitle('Distribution of step sizes and dwell times')
+
     # Step size histogram
-    plt.subplot(211)
-    plt.hist(steps_pre.step_sizes, step_size_bins, color='c',
-             alpha=0.35, linewidth=0, label='all steps')
-    plt.hist(steps.step_sizes, step_size_bins, color='m',
-             alpha=0.65, linewidth=0.5, label='steps after deletion')
-    plt.ylabel('Count')
-    plt.xlabel('Step size')
+    ax = axes_distribution[0]
+    ax.hist(steps_pre.step_sizes, step_size_bins, color='c',
+            alpha=0.35, linewidth=0, label='all steps')
+    ax.hist(steps.step_sizes, step_size_bins, color='m',
+            alpha=0.65, linewidth=0.5, label='steps after deletion')
+    ax.set_ylabel('Count')
+    ax.set_xlabel('Step size')
+
     # Dwell time histogram
-    plt.subplot(212)
-    plt.hist(steps_pre.dwell_points / resolution, dwell_time_bins, color='c',
-             alpha=0.35, linewidth=0, label='all steps')
-    plt.hist(steps.dwell_points / resolution, dwell_time_bins, color='m',
-             alpha=0.65, linewidth=0.5, label='steps after deletion')
-    plt.legend(loc='best')
-    plt.ylabel('Count')
-    plt.xlabel('Dwell time (s)')
-    return fig1, fig2
+    ax = axes_distribution[1]
+    ax.hist(steps_pre.dwell_points / resolution, dwell_time_bins, color='c',
+            alpha=0.35, linewidth=0, label='all steps')
+    ax.hist(steps.dwell_points / resolution, dwell_time_bins, color='m',
+            alpha=0.65, linewidth=0.5, label='steps after deletion')
+    ax.legend(loc='best')
+    ax.set_ylabel('Count')
+    ax.set_xlabel('Dwell time (s)')
+
+    return fig_steps, fig_distribution
