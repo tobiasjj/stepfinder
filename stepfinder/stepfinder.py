@@ -1749,6 +1749,10 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     if axes_steps is None:
         fig_steps, axes_steps = plt.subplots(4, sharex=True)
         axes_steps = axes_steps.flatten()
+        for ax in axes_steps[:-1]:
+            ax.tick_params(bottom=False)
+        for ax in axes_steps[1:]:
+            ax.tick_params(top=False)
     else:
         fig_steps = axes_steps[0].get_figure()
 
@@ -1770,7 +1774,7 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
             'm.')
     ax.set_xlim(xlim)
     ax.set_ylim(ylims[0])
-    ax.set_ylabel('Data (m)')
+    ax.set_ylabel('Data')
 
     # Text of the used parameters of the step finder algorithm
     if print_pars:
