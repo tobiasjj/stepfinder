@@ -1635,8 +1635,13 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
 
 def plot_stepfinder_characteristics(stepfinder_characteristics, axes=None):
     if axes is None:
-        fig, axes = plt.subplots(2, 2)
+        fig, axes = plt.subplots(2, 2, sharex=True)
         axes = axes.flatten()
+        for ax in axes[:-2]:
+            ax.tick_params(bottom=False)
+        for ax in axes[2:]:
+            ax.tick_params(top=False)
+        fig.subplots_adjust(hspace=0)
     else:
         fig = axes[0].get_figure()
 
@@ -1656,7 +1661,7 @@ def plot_stepfinder_characteristics(stepfinder_characteristics, axes=None):
     ax.plot(windows / resolution * 1000, steps_number, 'm.', label='deleted')
     ax.axvline(x=window_time * 1000, alpha=0.5)
     ax.legend(loc='best')
-    ax.set_xlabel('Filter window time (ms)')
+    #ax.set_xlabel('Filter window time (ms)')
     ax.set_ylabel('Step count')
 
     ax = axes[1]
@@ -1664,7 +1669,7 @@ def plot_stepfinder_characteristics(stepfinder_characteristics, axes=None):
         ax.plot(windows / resolution * 1000, steps_number / steps_number_pre,
                 '.')
     ax.axvline(x=window_time * 1000, alpha=0.5)
-    ax.set_xlabel('Filter window time (ms)')
+    #ax.set_xlabel('Filter window time (ms)')
     ax.set_ylabel('Ratio of valid steps')
 
     ax = axes[2]
@@ -1753,6 +1758,7 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
             ax.tick_params(bottom=False)
         for ax in axes_steps[1:]:
             ax.tick_params(top=False)
+        fig_steps.subplots_adjust(hspace=0)
     else:
         fig_steps = axes_steps[0].get_figure()
 
