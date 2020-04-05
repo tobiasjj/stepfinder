@@ -1772,8 +1772,9 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     if simulated_steps is not None:
         ax.plot(time[::decimate], simulated_steps.data[::decimate], alpha=0.8,
                 color='yellow')
-    ax.step(time[steps.plateaus[:, 0]], steps.plateau_heights, 'm',
-            where='post', lw=0.5)
+    if steps.number > 0:
+        ax.step(time[steps.plateaus[:, 0]], steps.plateau_heights, 'm',
+                where='post', lw=0.5)
     ax.plot(time[steps_pre.indices],
             fbnl_filter.data_filtered[steps_pre.indices], 'c.')
     ax.plot(time[steps.indices], fbnl_filter.data_filtered[steps.indices],
@@ -1809,16 +1810,18 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
 
     # Step sizes and threshold
     ax = axes_steps[2]
-    ax.stem(time[steps_pre.indices], steps_pre.step_sizes, 'c', 'c.', 'k-')
-    ax.stem(time[steps.indices], steps.step_sizes, 'm', 'mo', 'k-')
-    ax.step(time[steps_pre.indices], step_finder_result.min_sizes_pre, 'c',
-            where='mid')
-    ax.step(time[steps_pre.indices], - step_finder_result.min_sizes_pre, 'c',
-            where='mid')
-    ax.step(time[steps.indices], step_finder_result.min_sizes, 'm',
-            where='mid')
-    ax.step(time[steps.indices], - step_finder_result.min_sizes, 'm',
-            where='mid')
+    if steps_pre.number > 0:
+        ax.stem(time[steps_pre.indices], steps_pre.step_sizes, 'c', 'c.', 'k-')
+        ax.step(time[steps_pre.indices], step_finder_result.min_sizes_pre, 'c',
+                where='mid')
+        ax.step(time[steps_pre.indices], - step_finder_result.min_sizes_pre, 'c',
+                where='mid')
+    if steps.number > 0:
+        ax.stem(time[steps.indices], steps.step_sizes, 'm', 'mo', 'k-')
+        ax.step(time[steps.indices], step_finder_result.min_sizes, 'm',
+                where='mid')
+        ax.step(time[steps.indices], - step_finder_result.min_sizes, 'm',
+                where='mid')
     ax.set_xlim(xlim)
     ax.set_ylim(ylims[2])
     ax.set_ylabel('Step size')
@@ -1827,13 +1830,14 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     ax = axes_steps[3]
     # take center of plateaus as start/stop values for plotting function of
     # ratio of sd to noise (there is one more plateau as steps)
-    p_center = (steps.plateaus[:, 0]
-                + (steps.plateaus[:, 1] - steps.plateaus[:, 0]) / 2)
-    p_center = np.round(p_center).astype(int)
-    p_center[p_center > datapoints - 1] = datapoints - 1
-    ax.step(time[p_center][:-1], step_distribution.step_noise_over_sd, 'm',
-            where='post')
-    ax.plot(time[steps.indices], step_distribution.step_noise_over_sd, 'mo')
+    if steps.number > 0:
+        p_center = (steps.plateaus[:, 0]
+                    + (steps.plateaus[:, 1] - steps.plateaus[:, 0]) / 2)
+        p_center = np.round(p_center).astype(int)
+        p_center[p_center > datapoints - 1] = datapoints - 1
+        ax.step(time[p_center][:-1], step_distribution.step_noise_over_sd, 'm',
+                where='post')
+        ax.plot(time[steps.indices], step_distribution.step_noise_over_sd, 'mo')
     ax.set_xlim(xlim)
     ax.set_ylim(ylims[3])
     ax.set_ylabel('Quality of steps\nnoise (w/o steps) /\ns.d. around each step')
