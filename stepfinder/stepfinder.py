@@ -1649,7 +1649,7 @@ def plot_stepfinder_characteristics(stepfinder_characteristics, axes=None):
     resolution = stepfinder_characteristics['resolution']
     window_time = stepfinder_characteristics['window_time']
 
-    fig.suptitle('Result of the filter window time optimization process')
+    #fig.suptitle('Result of the filter window time optimization process')
 
     ax = axes[0]
     ax.plot(windows / resolution * 1000, steps_number_pre, 'c.', label='pre')
@@ -1685,8 +1685,9 @@ def plot_stepfinder_characteristics(stepfinder_characteristics, axes=None):
 
 
 def plot_result(step_finder_result, simulated_steps=None, decimate=None,
-                xlim=None, ylims=None, unfiltered=True, step_size_bins=None,
-                dwell_time_bins=None, axes_steps=None, axes_distribution=None):
+                xlim=None, ylims=None, unfiltered=True, print_pars=True,
+                step_size_bins=None, dwell_time_bins=None, axes_steps=None,
+                axes_distribution=None):
     """
     Plot the result of a step_finder.
 
@@ -1751,16 +1752,6 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
     else:
         fig_steps = axes_steps[0].get_figure()
 
-    # Result of the step finder algorithm
-    tmp = ('filter_time = {:.1f} ms, p = {:.1f}, y_c = {:.3f},'
-           '\nmin_dwell_time = {:.1f} ms, step_size_threshold = {},'
-           '\nsteps.number: {}')
-    # min_step_spacing, y_c, step_size_threshold, filter_time, p
-    pars = (filter_time * 1000, p, y_c, min_dwell_time * 1000,
-            step_size_threshold, steps.number)
-    title = tmp.format(*pars)
-    fig_steps.suptitle(title)
-
     # Plot data, filtered data and steps
     ax = axes_steps[0]
     if unfiltered:
@@ -1779,7 +1770,20 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
             'm.')
     ax.set_xlim(xlim)
     ax.set_ylim(ylims[0])
-    ax.set_ylabel('Position (m)')
+    ax.set_ylabel('Data (m)'
+
+    # Text of the used parameters of the step finder algorithm
+    if print_pars:
+        tmp = (r'steps: {}, filter_time$ = {:.1f}\,ms$, p$ = {:.1f}$, '
+               'y_c$ = {:.3f}$,\nmin_dwell_time$ = {:.1f}\,ms$, '
+               'step_size_threshold$ = {}$')
+        # min_step_spacing, y_c, step_size_threshold, filter_time, p
+        pars = (steps.number, filter_time * 1000, p, y_c,
+                min_dwell_time * 1000, step_size_threshold)
+        text_pars = tmp.format(*pars)
+        ax.text(0.5, 0.98, text_pars, fontsize=7, color='red',
+                horizontalalignment='center', verticalalignment='top',
+                transform=ax.transAxes)
 
     # Plot step_mass with y_c and steps
     ax = axes_steps[1]
@@ -1830,7 +1834,7 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
         axes_distribution = axes_distribution.flatten()
     else:
         fig_distribution = axes_distribution[0].get_figure()
-    fig_distribution.suptitle('Distribution of step sizes and dwell times')
+    #fig_distribution.suptitle('Distribution of step sizes and dwell times')
 
     # Step size histogram
     ax = axes_distribution[0]
