@@ -1785,7 +1785,7 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
         pars = (steps.number, filter_time * 1000, p, y_c,
                 min_dwell_time * 1000, step_size_threshold)
         text_pars = tmp.format(*pars)
-        ax.text(0.5, 0.98, text_pars, fontsize=7, color='red',
+        ax.text(0.5, 0.98, text_pars, fontsize=6, color='red',
                 horizontalalignment='center', verticalalignment='top',
                 transform=ax.transAxes)
 
