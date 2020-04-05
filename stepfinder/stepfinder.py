@@ -1770,7 +1770,7 @@ def plot_result(step_finder_result, simulated_steps=None, decimate=None,
             'm.')
     ax.set_xlim(xlim)
     ax.set_ylim(ylims[0])
-    ax.set_ylabel('Data (m)'
+    ax.set_ylabel('Data (m)')
 
     # Text of the used parameters of the step finder algorithm
     if print_pars:
