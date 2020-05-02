@@ -1160,7 +1160,9 @@ def find_and_analyse_steps(fbnl_filter, expected_min_step_size=None,
     ----------
     fbnl_filter : FBNLFilterResult or FBNLFilterBankResult
     expected_min_step_size : float, optional
-        Defaults to 1.
+        Determines the threshold for step detection:
+        y_c = 2/3 * `expected_min_step_size` / noise
+        Defaults to y_c = 2/3.
     expected_min_dwell_t : float, optional
         Minimum step spacing (dwell time) that can be found.
     step_size_threshold : str or float, optional
@@ -1386,8 +1388,8 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
         value." Chung1991 used values between 1 and 100.
     expected_min_step_size : float, optional
         Low values yield wrong steps. High values yield no steps. Expected
-        minimum step size is converted into the threshold value y_c = 2/3 *
-        `expected_min_step_size` / `noise` (see [2]). Defaults to 1.
+        minimum step size determines the threshold value y_c = 2/3 *
+        `expected_min_step_size` / `noise` (see [2]). Defaults to y_c = 2/3.
     expected_min_dwell_t : float, optional
         The minimal dwell time (`step_spacing`), one expects to be existent in
         the data. Used to check the filtered signal for steps. Higher values
@@ -1474,26 +1476,29 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
     and thereby increase the SNR of the data.
 
     From [1]:
-    "The number of predictors [here filter_number] and their lengths can be
-    varied. Three short pairs of the predictors used to extract exponentially
-    decaying signals imbedded in the noise [...] preserved the original
-    features of the signal, but the background noise was not effectively
-    suppressed [...]. As the predictors of longer lengths were added [...], a
-    further reduction in the noise was achieved at the expense of distorting
-    the original signal. Although there are a large number of possible
-    predictor combinations that can be used for processing a segment of data,
-    the choice of the bank of predictors in practice is straightforward.
-    Various choices of lengths of predictors should be based on the expected
-    durations of signal features. If, for example, we anticipate signals of
-    width 10 samples to be present in the data, then there should be at least
-    one predictor whose length is less than 10 points [here you would set tmin
-    to <= 10]. Naturally, if longer signal features are present, then
-    correspondingly longer window predictors should be included in the bank.
+    "The number of predictors [here only 1 forward and 1 backward] and their
+    lengths can be varied. Three short pairs of the predictors used to extract
+    exponentially decaying signals imbedded in the noise [...] preserved the
+    original features of the signal, but the background noise was not
+    effectively suppressed [...]. As the predictors of longer lengths were
+    added [...], a further reduction in the noise was achieved at the expense
+    of distorting the original signal. Although there are a large number of
+    possible predictor combinations that can be used for processing a segment
+    of data, the choice of the bank of predictors in practice is
+    straightforward. Various choices of lengths of predictors should be based
+    on the expected durations of signal features. If, for example, we
+    anticipate signals of width 10 samples to be present in the data, then
+    there should be at least one predictor whose length is less than 10 points
+    [here you would set tmin to <= 10]. Naturally, if longer signal features
+    are present, then correspondingly longer window predictors should be
+    included in the bank.
 
-    Regarding the parameter `expected_min_step_size`:
+    Regarding the parameter `expected_min_step_size` (which determines the
+    threshold for step detection y_c):
     For perfectly aligned Tweezers m/sqrt(min_step_spacing / 2) is the ttest
     for having NO step. As there are always systematic errors, assume t = m, so
-    setting y_c to 2 makes algorithm find steps with at least 95 % reliability.
+    setting the threshold for step detection y_c to 2 makes the algorithm find
+    steps with at least 95 % reliability.
 
 
     References
