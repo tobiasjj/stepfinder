@@ -1355,7 +1355,7 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
         The filter time used to filter the data for the edge detector. Set it
         to overwrite the automatically detected optimal filter time. Otherwise,
         the optimal `filter_time` is automatically detected  based on the STD
-        of the step_mass from different tested times (see parameters
+        of the step_mass from different tested filter_times (see parameters
         `filter_min_t`, `filter_max_t` and `filter_number`)
         You only should set the time manually, if you know that it performs
         well with the given data. A good rule of thumb is to set the
@@ -1571,7 +1571,7 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
         mSNRs.append(mSNR)
         STDs.append(STD)
 
-        # mean of data_filtered of several banks of predictors
+        # mean of data_filtered with several banks of predictors
         data_filtered_mean += fbnl_filter.data_filtered / len(windows)
         step_size_mean += fbnl_filter.step_size / len(windows)
         noise_mean += fbnl_filter.noise / len(windows)
@@ -1583,14 +1583,14 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
                     step_finder_result.steps.number)
             print(tmp.format(*pars))
 
+    STDs = np.array(STDs)
+    step_mass_mean = step_size_mean / noise_mean
+
     if verbose:
         print('-----------------------------------------------------------------')
 
-    step_mass_mean = step_size_mean / noise_mean
-
     # Automatically select a conservatively chosen window size
-    # which corresponds to 2/3 times the window size at the STD minimum.
-    STDs = np.array(STDs)
+    # which corresponds to 4/5 times the window size at the STD minimum.
     if filter_time is None:
         idx = np.argwhere(STDs.min() == STDs)
         window = int(np.round(np.mean(windows[idx]) * 4/5))
