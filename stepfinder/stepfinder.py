@@ -375,29 +375,29 @@ def log_spaced_time_windows(tmin, tmax=None, resolution=None, number=None):
     return windows
 
 
-def cap_data(data, cap_length, inspect_length):
+def pad_data(data, pad_length, inspect_length):
     """
-    Cap data at the ends with values distributed normally.
+    Pad data at the ends with values distributed normally.
 
-    The mean and the standard deviation of the data points for the caps is
+    The mean and the standard deviation of the data points for the pads is
     calculated from the first and last `inspect_length` datapoints of the
-    `data`. The data is than capped with `cap_length` datapoints at both ends.
+    `data`. The data is than padded with `pad_length` datapoints at both ends.
 
     Parameters
     ----------
     data : 1D numpy.ndarray of type float
-        The data which should be capped with normally distributed datapoints
+        The data which should be padded with normally distributed datapoints
         at both ends.
-    cap_length : int
-        The length of the caps the data should be extended with.
+    pad_length : int
+        The length of the pads the data should be extended with.
     inspect_length : int
         The length of the datapoints that should be used to calculate the mean
-        and the standard deviation of the caps.
+        and the standard deviation of the pads.
 
     Returns
     -------
     1D numpy.ndarray of type float
-        The capped data.
+        The padded data.
     """
     median_start, std_start = \
         np.median(data[:int(inspect_length) + 1]), \
@@ -406,9 +406,9 @@ def cap_data(data, cap_length, inspect_length):
         np.median(data[-int(inspect_length):]), \
         np.std(data[-int(inspect_length):], ddof=1)
     noise_start = \
-        np.random.normal(loc=median_start, scale=std_start, size=cap_length)
+        np.random.normal(loc=median_start, scale=std_start, size=pad_length)
     noise_stop = \
-        np.random.normal(loc=median_stop, scale=std_stop, size=cap_length)
+        np.random.normal(loc=median_stop, scale=std_stop, size=pad_length)
     data = np.r_[noise_start, data, noise_stop]
     return data
 
@@ -487,7 +487,7 @@ def simulate_steps(duration=10.0, resolution=1000.0, dwell_time=1.0,
 
 
 def filter_fbnl(data, resolution, window, window_var=None, p=None,
-                cap_data=True):
+                pad_data=True):
     """
     Forward Backward Nonlinear Filter
 
@@ -510,9 +510,9 @@ def filter_fbnl(data, resolution, window, window_var=None, p=None,
         Nonlinearity for calculating weights. 3 to 6 is ok, 10 is much, 1 is
         quite low -> weight = s.d.^(-2*p) (-> 0.5=std.-dev., 1=variance, ...)
         Defaults to 1.
-    cap_data : bool
-        Cap the data to protect the ends from be "eaten up" by the filtering
-        process. See also function `cap_data()`.
+    pad_data : bool
+        Pad the data to protect the ends from be "eaten up" by the filtering
+        process. See also function `pad_data()`.
 
     Returns
     -------
@@ -527,8 +527,8 @@ def filter_fbnl(data, resolution, window, window_var=None, p=None,
     [2] Smith, D.A. 1998 "A Quantitative Method for the Detection of Edges in
     Noisy Time-Series." Phil. Trans. R. Soc. Lond. B 353, 1969-1981
     """
-    if cap_data:
-        f = _filter_fbnl_capped
+    if pad_data:
+        f = _filter_fbnl_padded
     else:
         f = _filter_fbnl
 
@@ -577,11 +577,11 @@ def filter_fbnl(data, resolution, window, window_var=None, p=None,
                             step_mass_SNR_median, step_mass_STD, outls)
 
 
-def _filter_fbnl_capped(data, resolution, window, window_var=None, p=None):
+def _filter_fbnl_padded(data, resolution, window, window_var=None, p=None):
     window_var = window_var or window
     loss = window + window_var - 1
     inspect = int(np.ceil(window / 2))
-    _data = cap_data(data, loss, inspect)
+    _data = pad_data(data, loss, inspect)
 
     (data, resolution, window, window_var, p, data_filtered, sf, sb, f, b, xf,
      xb) = _filter_fbnl(_data, resolution, window, window_var, p)
@@ -1111,7 +1111,7 @@ def get_step_qualities(steps, fbnl_filter):
         # get the center of the plateaus and make sure the indices are at least
         # a lenght of size window apart from the steps themself and window +
         # window_var from the ends of the data (filter -> nan -> see data
-        # capping)
+        # padding)
         start_l = int(np.round(p_l[0] + (p_l[1] - p_l[0]) / 2))
         start_l = max(start_l, p_l[0] + window)
         start_l = max(start_l, start_min)
@@ -1339,7 +1339,7 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
                               filter_number=None, edginess=None,
                               expected_min_step_size=None,
                               expected_min_dwell_t=None,
-                              step_size_threshold=None, cap_data=True,
+                              step_size_threshold=None, pad_data=True,
                               verbose=True, plot=True):
     """
     Fiter data, find steps and analyse the steps. See notes for further
@@ -1410,8 +1410,8 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
             noise. threshold(step) = y_c / <noise>_data(step +-
             min_step_spacing). BEST CHOICE: Every found step has the same
             reliability, given by y_c.
-    cap_data : bool, optional
-        Cap the data to protect the ends from be "eaten up" by the filtering
+    pad_data : bool, optional
+        Pad the data to protect the ends from be "eaten up" by the filtering
         process. Defaults to True.
     verbose : bool, optional
         Be verbose. Defaults to True.
@@ -1552,7 +1552,7 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
         # averaging
         fbnl_filter = filter_fbnl(data, resolution, window=window,
                                   window_var=window_var, p=edginess,
-                                  cap_data=cap_data)
+                                  pad_data=pad_data)
         step_finder_result \
             = find_and_analyse_steps(fbnl_filter, expected_min_step_size,
                                      expected_min_dwell_t,
@@ -1610,7 +1610,7 @@ def filter_find_analyse_steps(data, resolution, filter_time=None,
 
     fbnl_filter = filter_fbnl(data, resolution, window=window,
                               window_var=window_var, p=edginess,
-                              cap_data=cap_data)
+                              pad_data=pad_data)
 
     fbnl_filter = FBNLFilterBankResult(windows, windows_var,
                                        data_filtered_mean, step_mass_mean,
