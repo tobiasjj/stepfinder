@@ -532,8 +532,8 @@ def filter_fbnl(data, resolution, window, window_var=None, p=None,
     else:
         f = _filter_fbnl
 
-    (data, resolution, window, window_var, p, data_filtered, sf, sb, f, b, xf,
-     xb) = f(data, resolution, window, window_var=window_var, p=p)
+    (data, window, window_var, p, data_filtered, sf, sb, f, b, xf, xb) = \
+        f(data, window, window_var=window_var, p=p)
 
     # Calculate the step_size, noise, and step_masses
     # noise = weighted moving variances
@@ -577,14 +577,14 @@ def filter_fbnl(data, resolution, window, window_var=None, p=None,
                             step_mass_SNR_median, step_mass_STD, outls)
 
 
-def _filter_fbnl_padded(data, resolution, window, window_var=None, p=None):
+def _filter_fbnl_padded(data, window, window_var=None, p=None):
     window_var = window_var or window
     loss = window + window_var - 1
     inspect = int(np.ceil(window / 2))
     _data = pad_data(data, loss, inspect)
 
-    (data, resolution, window, window_var, p, data_filtered, sf, sb, f, b, xf,
-     xb) = _filter_fbnl(_data, resolution, window, window_var, p)
+    (data, window, window_var, p, data_filtered, sf, sb, f, b, xf,
+     xb) = _filter_fbnl(_data, window, window_var, p)
 
     data = data[loss:-loss]
     data_filtered = data_filtered[loss:-loss]
@@ -595,11 +595,10 @@ def _filter_fbnl_padded(data, resolution, window, window_var=None, p=None):
     xf = xf[loss:-loss]
     xb = xb[loss:-loss]
 
-    return (data, resolution, window, window_var, p, data_filtered, sf, sb, f,
-            b, xf, xb)
+    return (data, window, window_var, p, data_filtered, sf, sb, f, b, xf, xb)
 
 
-def _filter_fbnl(data, resolution, window, window_var=None, p=None):
+def _filter_fbnl(data, window, window_var=None, p=None):
     N = len(data)
     window_var = window_var or window
     p = p if p is not None else 1
@@ -653,8 +652,7 @@ def _filter_fbnl(data, resolution, window, window_var=None, p=None):
     # Filtered result is the weighted sum over forward and backward estimations
     data_filtered = f * xf + b * xb
 
-    return (data, resolution, window, window_var, p, data_filtered, sf, sb, f,
-            b, xf, xb)
+    return (data, window, window_var, p, data_filtered, sf, sb, f, b, xf, xb)
 
 
 def find_steps(step_mass, y_c, max_step_width=None, min_step_spacing=None,
