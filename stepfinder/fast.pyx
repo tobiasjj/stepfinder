@@ -16,12 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#cython: language_level=3
+
 import numpy as np
 cimport numpy as np
 cimport cython
 
 ctypedef np.double_t DTYPE_d
-ctypedef np.int_t DTYPE_i
+ctypedef np.int64_t DTYPE_i
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -60,7 +62,7 @@ def _iterative_variance(np.ndarray[DTYPE_d, ndim=1] data not None,
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
-def _delete_close_center(step_bounds not None,
+def _delete_close_center(np.ndarray[DTYPE_i, ndim=2] step_bounds not None,
                          np.ndarray direction not None,
                          unsigned int max_step_width,
                          unsigned int min_step_spacing,
@@ -91,7 +93,7 @@ def _delete_close_center(step_bounds not None,
     cdef np.ndarray[DTYPE_i, ndim=1] start = _start
     cdef np.ndarray[DTYPE_i, ndim=1] stop = _stop
     cdef np.ndarray[DTYPE_d, ndim=1] center = (start + (stop - start) / 2)
-    cdef np.ndarray[DTYPE_i, ndim=1] keep = np.ones_like(direction, dtype=int)
+    cdef np.ndarray[DTYPE_i, ndim=1] keep = np.ones_like(direction, dtype=np.int64)
     cdef bint _switch_accept = switch_accept
     cdef bint _fuse = fuse
     cdef unsigned int i = 0

@@ -128,7 +128,7 @@ def get_contiguous_segments(plateaus, min_distance_center=1, min_length_high=1,
     """
 
     if plateaus.size == 0:
-        return np.empty((0, 2), dtype=int)
+        return np.empty((0, 2), dtype=np.int64)
 
     # Find the indices of changes in "plateaus"
     d = np.diff(plateaus)
@@ -152,7 +152,7 @@ def get_contiguous_segments(plateaus, min_distance_center=1, min_length_high=1,
 
     # No contiguous segments detected
     if idx.size < 2:
-        return np.empty((0, 2), dtype=int)
+        return np.empty((0, 2), dtype=np.int64)
 
     idx_start = idx[:-1:2]
     idx_stop = idx[1::2]
@@ -271,7 +271,7 @@ def idx_to_idx_segments(idx, start=None, stop=None):
     if idx.size >= 2:
         idx_segs = np.sort(np.r_[idx, idx[1:-1]])
     else:  # size is 1 or empty
-        idx_segs = np.array([], dtype=int)
+        idx_segs = np.array([], dtype=np.int64)
 
     if idx.size >= 2:
         if start is not None and start < idx[0]:
@@ -450,7 +450,7 @@ def simulate_steps(duration=10.0, resolution=1000.0, dwell_time=1.0,
     # Random steps with constant or exponential distributed dwell times
     if movement == 'monoton' and constant_dwell:
         data = step_size * np.floor(np.arange(0, length) / dwell_points)
-        dwells = np.full(length + 1, dwell_points, dtype=int)
+        dwells = np.full(length + 1, dwell_points, dtype=np.int64)
         indices = np.arange(dwell_points, length, dwell_points)
     else:
         data = np.empty(length)
@@ -458,8 +458,8 @@ def simulate_steps(duration=10.0, resolution=1000.0, dwell_time=1.0,
         i = 0
         step = 0
         points = dwell_points
-        dwells = np.empty(0, dtype=int)
-        indices = np.empty(0, dtype=int)
+        dwells = np.empty(0, dtype=np.int64)
+        indices = np.empty(0, dtype=np.int64)
         while i < length:
             if not constant_dwell:
                 random = np.random.exponential(scale=dwell_points)
@@ -805,7 +805,7 @@ def find_steps(step_mass, y_c, max_step_width=None, min_step_spacing=None,
         center_of_mass = max(start, center_of_mass)
         center_of_mass = min(stop - 1, center_of_mass)
         indices.append(center_of_mass)
-    indices = np.array(indices)
+    indices = np.array(indices, dtype=np.int64)
 
     # For convenience calculate start/stop indices of plateaus between the
     # steps
@@ -1038,9 +1038,9 @@ def delete_small_steps(steps, min_step_sizes):
             current = current.next
 
     # Create numpy arrays
-    plateaus = np.empty((num_plateaus, 2), dtype=int)
+    plateaus = np.empty((num_plateaus, 2), dtype=np.int64)
     p_heights = np.empty(num_plateaus)
-    step_bounds = np.empty((num_plateaus - 1, 2), dtype=int)
+    step_bounds = np.empty((num_plateaus - 1, 2), dtype=np.int64)
 
     current = first
     i = 0
@@ -1317,9 +1317,9 @@ def find_and_analyse_steps(fbnl_filter, expected_min_step_size=None,
                                   step_distribution)
     else:
         # no steps, create one big plateau
-        plateaus = np.array([0, len(fbnl_filter.data)], dtype=int)
+        plateaus = np.array([0, len(fbnl_filter.data)], dtype=np.int64)
         plateau_heights = np.array(np.sum(fbnl_filter.data))
-        steps = Steps(np.empty(0, dtype=int), np.empty(0, dtype=bool),
+        steps = Steps(np.empty(0, dtype=np.int64), np.empty(0, dtype=bool),
                       np.empty(shape=(0, 2)), 0, plateaus, p_centers,
                       np.empty(0), plateau_heights, np.empty(0))
         min_step_sizes = np.array([])
